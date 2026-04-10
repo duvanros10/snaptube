@@ -1,0 +1,31 @@
+services:
+  api:
+    build: .
+    container_name: fastapi_downloader
+    ports:
+      - "8000:8000"
+    volumes:
+      # Project root first; nested mount below overrides /app/downloads explicitly
+      - .:/app
+      # Map downloads directory: HOST:CONTAINER
+      - ./downloads:/app/downloads
+    environment:
+      - DOWNLOAD_DIR=downloads
+    # Dev: reload on code changes (requires source mount above)
+    command:
+      [
+        "uvicorn",
+        "main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
+        "--reload",
+      ]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
