@@ -1,8 +1,8 @@
 import os
 
 import yt_dlp
-from fastapi import BackgroundTasks, FastAPI, Header, HTTPException
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi import BackgroundTasks, FastAPI, Header, HTTPException, Request
+from fastapi.responses import FileResponse, Response, StreamingResponse
 
 from utils import (
     format_bytes,
@@ -43,9 +43,7 @@ def read_root():
 @app.get("/video-details")
 async def get_video_details(url: str):
     try:
-        with yt_dlp.YoutubeDL(
-            ydl_opts(quiet=True, no_warnings=True)
-        ) as ydl:
+        with yt_dlp.YoutubeDL(ydl_opts(quiet=True, no_warnings=True)) as ydl:
             # Metadata only; no download
             info = ydl.extract_info(url, download=False)
 
@@ -98,9 +96,9 @@ async def get_video_details(url: str):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-
-@app.get("/download/stream")
+@app.api_route("/download", methods=["GET", "HEAD"])
 async def download_video_stream(
+    request: Request,
     url: str,
     format_id: str,
     background_tasks: BackgroundTasks,
@@ -113,7 +111,8 @@ async def download_video_stream(
             video_title = info.get("title", "untitled_video")
 
         clean_title = slugify(video_title)
-        temp_filename = f"{clean_title}_{format_id}.mp4"
+        video_id = info.get("id", "").lower()
+        temp_filename = f"{video_id}_{format_id}.mp4"
         file_path = os.path.join(DOWNLOAD_DIR, temp_filename)
 
         dl_opts = ydl_opts(
@@ -132,6 +131,19 @@ async def download_video_stream(
             raise HTTPException(status_code=404, detail="File not found")
 
         file_size = os.path.getsize(file_path)
+
+        if request.method == "HEAD":
+            if not file_size:
+                raise HTTPException(status_code=400, detail="File size not available")
+
+            return Response(
+                status_code=200,
+                headers={
+                    "Content-Length": str(file_size),
+                    "Accept-Ranges": "bytes",
+                },
+            )
+
         start = 0
         end = file_size - 1
         status_code = 200
@@ -178,7 +190,8 @@ async def download_video(url: str, format_id: str, background_tasks: BackgroundT
         video_title = info.get("title", "untitled_video")
 
     clean_title = slugify(video_title)
-    temp_filename = f"{clean_title}_{format_id}.mp4"
+    video_id = info.get("id", "").lower()
+    temp_filename = f"{video_id}_{format_id}.mp4"
     file_path = os.path.join(DOWNLOAD_DIR, temp_filename)
 
     dl_opts = ydl_opts(
