@@ -1,7 +1,7 @@
 import os
 
 import yt_dlp
-from fastapi import BackgroundTasks, FastAPI, Header, HTTPException, Request
+from fastapi import BackgroundTasks, FastAPI, Header, HTTPException, Request, status
 from fastapi.responses import FileResponse, Response, StreamingResponse
 
 from utils import (
@@ -96,7 +96,22 @@ async def get_video_details(url: str):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@app.api_route("/download", methods=["GET", "HEAD"])
+
+@app.delete("/download/file/{video_id}/{format_id}")
+async def delete_cached_file(video_id: str, format_id: str):
+    temp_filename = f"{video_id}_{format_id}.mp4"
+    file_path = os.path.join(DOWNLOAD_DIR, temp_filename)
+
+    if os.path.exists(file_path):
+        try:
+            os.remove(file_path)
+        except OSError:
+            return Response(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@app.api_route("/download/stream", methods=["GET", "HEAD"])
 async def download_video_stream(
     request: Request,
     url: str,
@@ -170,7 +185,7 @@ async def download_video_stream(
             background_tasks.add_task(remove_file, file_path)
 
         return StreamingResponse(
-            send_file_chunks(file_path, start),
+            send_file_chunks(file_path, start, end),
             status_code=status_code,
             headers=headers,
             media_type="video/mp4",

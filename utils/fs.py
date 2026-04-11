@@ -7,9 +7,19 @@ def remove_file(path: str) -> None:
         os.remove(path)
 
 
-def send_file_chunks(path: str, start: int, chunk_size: int = 1024 * 1024) -> Iterator[bytes]:
-    """Read file in chunks from a byte offset (for Range requests)."""
+def send_file_chunks(
+    path: str,
+    start: int,
+    end: int,
+    chunk_size: int = 1024 * 1024,
+) -> Iterator[bytes]:
+    """Read file in chunks within [start, end] inclusive (RFC 9110 Range)."""
     with open(path, "rb") as f:
         f.seek(start)
-        while chunk := f.read(chunk_size):
-            yield chunk
+        remaining = end - start + 1
+        while remaining > 0:
+            data = f.read(min(chunk_size, remaining))
+            if not data:
+                break
+            yield data
+            remaining -= len(data)
