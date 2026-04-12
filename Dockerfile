@@ -5,11 +5,12 @@ FROM python:3.11-slim
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# 3. Install system dependencies (FFmpeg and Node.js)
-# Update package index and install required tools
+# 3. Install system dependencies: FFmpeg (yt-dlp postprocess / audio transcode), Node (EJS), curl (NodeSource)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ffmpeg \
+    ca-certificates \
     curl \
+    ffmpeg \
+    && ffmpeg -version >/dev/null \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y nodejs \
     && apt-get clean \

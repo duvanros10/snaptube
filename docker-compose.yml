@@ -1,3 +1,4 @@
+# API image: see Dockerfile — FFmpeg is installed for yt-dlp (e.g. extract/convert audio); Node for YouTube EJS.
 services:
   api:
     build: .
