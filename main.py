@@ -82,7 +82,7 @@ async def get_video_details(url: str):
             for f in info.get("formats", []):
                 if f.get("ext") == "mp4" and f.get("vcodec") != "none":
                     quality = get_quality_tag(
-                        height=f.get("height", 0), fps=f.get("fps", 0)
+                        height=f.get("height") or 0, fps=f.get("fps") or 0
                     )
                     video_formats_list.append(
                         {
@@ -160,6 +160,7 @@ async def get_video_details(url: str):
                 )
 
             return {
+                "id": info.get("id"),
                 "title": info.get("title"),
                 "url": preview_url,
                 "imageUrl": info.get("thumbnail"),
@@ -172,9 +173,9 @@ async def get_video_details(url: str):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@app.delete("/download/file/{video_id}/{format_id}")
-async def delete_cached_file(video_id: str, format_id: str):
-    temp_filename = f"{video_id}_{format_id}.mp4"
+@app.delete("/download/file/{video_id}/{format_id}/{extension}")
+async def delete_cached_file(video_id: str, format_id: str, extension: str):
+    temp_filename = f"{video_id}_{format_id}.{extension}"
     file_path = os.path.join(DOWNLOAD_DIR, temp_filename)
 
     if os.path.exists(file_path):
@@ -253,7 +254,7 @@ async def download_video_stream(
             "Content-Range": f"bytes {start}-{end}/{file_size}",
             "Accept-Ranges": "bytes",
             "Content-Length": str(content_length),
-            "Content-Disposition": f'attachment; filename="{clean_title}.mp4"',
+            "Content-Disposition": f'attachment; filename*=UTF-8\'\'{clean_title}.mp4',
         }
 
         # Full-file response: schedule cleanup after send (partial ranges keep file for retries)
@@ -367,7 +368,7 @@ async def download_audio_stream(
             "Content-Range": f"bytes {start}-{end}/{file_size}",
             "Accept-Ranges": "bytes",
             "Content-Length": str(content_length),
-            "Content-Disposition": f'attachment; filename="{clean_title}.{out_ext}"',
+            "Content-Disposition": f'attachment; filename*=UTF-8\'\'{clean_title}.{out_ext}',
         }
 
         # Full-file response: schedule cleanup after send (partial ranges keep file for retries)

@@ -1,10 +1,20 @@
 import re
 from urllib.parse import parse_qs, urlencode, urlparse
+import unicodedata
 
 
-def slugify(text: str) -> str:
-    # Strip characters unsafe for filesystem paths
-    return re.sub(r'[\\/*?:"<>|]', "", text)
+def slugify(text: str, max_length: int = 100) -> str:
+    if not text:
+        return "file"
+    text = unicodedata.normalize("NFKD", text)
+    text = text.encode("ascii", "ignore").decode("ascii")
+    text = re.sub(r'[\\/*?:"<>|]', '', text)
+    text = re.sub(r'[\x00-\x1f\x7f]', '', text)
+    text = re.sub(r'\s+', ' ', text).strip()
+    text = text.rstrip('. ')
+    text = text[:max_length]
+
+    return text or "file"
 
 
 _YOUTUBE_HOSTS = {"youtube.com", "www.youtube.com", "m.youtube.com", "music.youtube.com"}
